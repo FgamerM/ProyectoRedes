@@ -265,8 +265,20 @@ public class DirectoryConnector {
 	public String[] getUserList() {
 		String[] userlist = null;
 		// TODO: Ver TODOs en logIntoDirectory y seguir esquema similar
-
+		
+		// TODO: Ver TODOs en logIntoDirectory y seguir esquema similar
+		DirMessage mensaje = new DirMessage(DirMessageOps.OPERATION_GETUSERLIST);
+		mensaje.setSessionkey(this.sessionKey);
+		String strToSend = mensaje.toString();
+		System.out.println(strToSend);
+		byte[] respuesta = sendAndReceiveDatagrams(strToSend.getBytes());
+		String reponse = new String(respuesta);
+		DirMessage responseMessage = DirMessage.fromString(reponse);
+		userlist = responseMessage.getUserlist(); 
+		
+		
 		return userlist;
+
 	}
 
 	/**
@@ -276,8 +288,26 @@ public class DirectoryConnector {
 	 */
 	public boolean logoutFromDirectory() {
 		// TODO: Ver TODOs en logIntoDirectory y seguir esquema similar
+		
+		boolean success = false;
+		DirMessage mensaje = new DirMessage(DirMessageOps.OPERATION_LOGOUT);
+		mensaje.setSessionkey(this.sessionKey);
+		System.out.println(mensaje);
+		String mensajeStr = mensaje.toString();
+		byte[] mensajeByte = mensajeStr.getBytes();
+		byte[] respuesta = this.sendAndReceiveDatagrams(mensajeByte);
+		String recievedDataString = new String(respuesta);
+		DirMessage respuestaDirMessage = DirMessage.fromString(recievedDataString);
+		
+		if(respuestaDirMessage.getOperation().equals(DirMessageOps.OPERATION_LOGINOK)) {
+			sessionKey=respuestaDirMessage.getSessionkey();
+			success=true;
+		} else {
+			System.err.println("No se ha podido loguear al usuario");
+		}
 
-		return false;
+		return success;
+
 	}
 
 	/**
