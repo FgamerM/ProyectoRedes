@@ -94,7 +94,7 @@ public class NFDirectoryServer {
 		 * asociado al búfer
 		 */
 
-		receptionBuffer = new byte[32];
+		receptionBuffer = new byte[128];
 		DatagramPacket packetFromClient = new DatagramPacket(receptionBuffer, receptionBuffer.length);
 
 
@@ -112,8 +112,7 @@ public class NFDirectoryServer {
 			dataLength=packetFromClient.getLength();
 
 			// TODO: (Boletín UDP) Establecemos 'clientAddr' con la dirección del cliente,
-			// obtenida del
-			// datagrama recibido
+			// obtenida del datagrama recibido
 
 			clientAddr=(InetSocketAddress) packetFromClient.getSocketAddress();
 
@@ -134,9 +133,7 @@ public class NFDirectoryServer {
 				 * TODO: (Boletín UDP) Construir una cadena a partir de los datos recibidos en
 				 * el buffer de recepción
 				 */
-				messageFromClient = new String(packetFromClient.getData(), 0 ,dataLength).trim();
-				//Si no va, Mario ha hecho messageFromClient = new String(packetFromClient.getData(), 0 ,dataLength).trim();
-
+				messageFromClient = new String(receptionBuffer, 0, packetFromClient.getLength());
 
 				if (NanoFiles.testMode) { // En modo de prueba (mensajes en "crudo", boletín UDP)
 					System.out.println("[testMode] Contents interpreted as " + dataLength + "-byte String: \""
@@ -156,7 +153,7 @@ public class NFDirectoryServer {
 								e.printStackTrace();
 							}
 					} else {
-						System.out.println("Se esperaba la cadena login subnormal");
+						System.out.println("Se esperaba la cadena login");
 					}
 					
 
@@ -168,18 +165,44 @@ public class NFDirectoryServer {
 						System.err.println("Directory DISCARDED datagram from " + clientAddr);
 						continue;
 					}
+					
+				//	System.out.println("quiero mandarte la respuesta pero el mensaje es "+messageFromClient);
+				//	String[] cadenaDividida = messageFromClient.split("&");
+					String mensajeClienteStr = new String(messageFromClient);
+                    if(mensajeClienteStr.startsWith("login")) {
+                        String nickname = mensajeClienteStr.substring(6);
+                        String strResponse = null;
+                        if(this.nicks.containsKey(nickname)) {
+                            strResponse = "login_failed:-1";
+                        }
+                        else {
+                            int num;
+                            do {
+                                num = random.nextInt(1000);
+                            } while (this.nicks.containsValue(num));
+
+                            this.nicks.put(nickname, num);
+                            strResponse = "loginok&"+num;
+                            System.out.println("Login aceptado");
+                        }
+
+
+                        DatagramPacket packetToSend = new DatagramPacket(strResponse.getBytes(), strResponse.length(), clientAddr);
+                        this.socket.send(packetToSend);
+                        System.out.println();
+                    }
 
 					/*
-					 * TODO: Construir String partir de los datos recibidos en el datagrama. A
+					 * TODO: Construir String a partir de los datos recibidos en el datagrama. A
 					 * continuación, imprimir por pantalla dicha cadena a modo de depuración.
 					 * Después, usar la cadena para construir un objeto DirMessage que contenga en
 					 * sus atributos los valores del mensaje (fromString).
 					 */
 					
-					messageFromClient = new String(packetFromClient.getData(), 0 ,dataLength).trim();
+			/*		messageFromClient = new String(packetFromClient.getData(), 0 ,dataLength).trim();
 					System.out.println("La cadena recibida es "+messageFromClient);
 					DirMessage mensaje = new DirMessage(messageFromClient);
-					
+				*/	
 					/*
 					 * TODO: Llamar a buildResponseFromRequest para construir, a partir del objeto
 					 * DirMessage con los valores del mensaje de petición recibido, un nuevo objeto
@@ -188,7 +211,7 @@ public class NFDirectoryServer {
 					 * adecuados para los diferentes campos del mensaje (operation, etc.)
 					 */
 					
-					DirMessage MessageToSend=this.buildResponseFromRequest(mensaje, clientAddr);
+				//	DirMessage MessageToSend=this.buildResponseFromRequest(mensaje, clientAddr);
 					
 					/*
 					 * TODO: Convertir en string el objeto DirMessage con el mensaje de respuesta a
@@ -196,7 +219,7 @@ public class NFDirectoryServer {
 					 * finalmente enviarlos en un datagrama
 					 */
 					
-					String MessageToSendString = MessageToSend.toString();
+			/*		String MessageToSendString = MessageToSend.toString();
 					byte[] MessageToSendBytes=MessageToSendString.getBytes();
 					DatagramPacket packetToServer = new DatagramPacket(MessageToSendBytes, MessageToSendBytes.length, clientAddr);
 					try {
@@ -204,7 +227,7 @@ public class NFDirectoryServer {
 						} catch(IOException e) {
 							e.printStackTrace();
 						}
-
+					*/	
 				}
 			} else {
 				System.err.println("Directory ignores EMPTY datagram from " + clientAddr);

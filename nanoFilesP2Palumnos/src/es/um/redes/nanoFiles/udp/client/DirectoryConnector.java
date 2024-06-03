@@ -1,10 +1,12 @@
 package es.um.redes.nanoFiles.udp.client;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 
 //import es.um.redes.boletinUDP.UDPServer;
@@ -54,18 +56,18 @@ public class DirectoryConnector {
 	private String errorDescription;
 
 	public DirectoryConnector(String address) throws IOException {
-		/* TEORICAMENTE HECHO
-		 * TODO: Convertir el nombre de host 'address' a InetAddress y guardar la
-		 * dirección de socket (address:DIRECTORY_PORT) del directorio en el atributo
-		 * directoryAddress, para poder enviar datagramas a dicho destino.
+		/*
+		 * TEORICAMENTE HECHO TODO: Convertir el nombre de host 'address' a InetAddress
+		 * y guardar la dirección de socket (address:DIRECTORY_PORT) del directorio en
+		 * el atributo directoryAddress, para poder enviar datagramas a dicho destino.
 		 */
-		
+
 		InetAddress serverIp = InetAddress.getByName(address);
-		directoryAddress=new InetSocketAddress(serverIp, DIRECTORY_PORT);
-		
-		/* TEORICAMENTE HECHO
-		 * TODO: Crea el socket UDP en cualquier puerto para enviar datagramas al
-		 * directorio
+		directoryAddress = new InetSocketAddress(serverIp, DIRECTORY_PORT);
+
+		/*
+		 * TEORICAMENTE HECHO TODO: Crea el socket UDP en cualquier puerto para enviar
+		 * datagramas al directorio
 		 */
 		socket = new DatagramSocket();
 		System.out.println("Created UDP socket at local addresss " + socket.getLocalSocketAddress());
@@ -113,13 +115,24 @@ public class DirectoryConnector {
 			e.printStackTrace();
 		}
 		DatagramPacket packetFromServer = new DatagramPacket(responseData, responseData.length);
-		try {
-		socket.receive(packetFromServer);
-		} catch(IOException e) {
-			e.printStackTrace();
+		boolean recibido=false;
+		int intentos=0;
+		while(!recibido && intentos<= MAX_NUMBER_OF_ATTEMPTS) {
+			try {
+				socket.setSoTimeout(TIMEOUT);
+				recibido=true;
+				socket.receive(packetFromServer);
+			} catch(SocketTimeoutException ex) {
+				intentos++;
+				recibido=false;
+			} catch(IOException e) {
+				e.printStackTrace();
+			//	return null;
+			}
 		}
-		byte [] r1 = packetFromServer.getData();
-		response = Arrays.copyOfRange(r1, 0, packetFromServer.getLength()); 
+
+	    response=new byte[packetFromServer.getLength()];
+	    System.arraycopy(responseData, 0, response, 0, packetFromServer.getLength());
 		
 		/*
 		 * TODO: Una vez el envío y recepción asumiendo un canal confiable (sin
@@ -164,10 +177,11 @@ public class DirectoryConnector {
 		boolean success = false;
 		String cadenaEnviar = "login";
 		String cadenaRecibir = "loginok";
-		byte[] requestData = cadenaEnviar.getBytes();
-		byte[] receivedData = cadenaRecibir.getBytes();
-		if(this.sendAndReceiveDatagrams(requestData).equals(receivedData)) {
-			success=true;
+		byte[] sentData = cadenaEnviar.getBytes();
+		byte[] receivedData = sendAndReceiveDatagrams(sentData);
+		String strReceivedData = new String(receivedData, 0, receivedData.length);
+		if (strReceivedData.equals(cadenaRecibir)) {
+			success = true;
 		}
 		return success;
 	}
@@ -191,18 +205,50 @@ public class DirectoryConnector {
 	public boolean logIntoDirectory(String nickname) {
 		assert (sessionKey == INVALID_SESSION_KEY);
 		boolean success = false;
+		
+/*		String cadenaToDirectory = new String("login&"+nickname);
+		byte[] cadenaToDirectoryBytes = cadenaToDirectory.getBytes();
+		byte[] respuesta = sendAndReceiveDatagrams(cadenaToDirectoryBytes);
+	//	String[] respuestaDividida = respuesta.toString().split("&");
+	//	int key = Integer.parseInt(respuestaDividida[1]);
+		String strRespuesta = new String(respuesta);
+		if(strRespuesta.equals("login_failed:-1")) {
+			System.out.println("No se ha podido añadir al usuario, ya existe un usuario con ese nickname");
+		} else {
+		int key = Integer.parseInt(strRespuesta.substring(8)); //El 8 es porque quiero lo que hay 8 posiciones después del comienzo la cadena, es decir, lo que va después de loginok&
+		if(strRespuesta.startsWith("loginok") && 0 <= key && key <= 1000) {
+			sessionKey = key;
+			System.out.println("Se ha logueado con éxito el usuario " + nickname +" con SessionKey: " + sessionKey);
+			success=true;
+		} else {
+			System.err.println("No se ha podido loguear al usuario");
+		}
+		}       */
+		
 		// TODO: 1.Crear el mensaje a enviar (objeto DirMessage) con atributos adecuados
-		// (operation, etc.) NOTA: Usar como operaciones las constantes definidas en la clase
+		// (operation, etc.) NOTA: Usar como operaciones las constantes definidas en la
+		// clase
 		// DirMessageOps
+		DirMessage mensaje = new DirMessage(DirMessageOps.OPERATION_LOGIN);
+		mensaje.setNickname(nickname);
 		// TODO: 2.Convertir el objeto DirMessage a enviar a un string (método toString)
+		String mensajeStr = mensaje.toString();
 		// TODO: 3.Crear un datagrama con los bytes en que se codifica la cadena
+		byte[] mensajeByte = mensajeStr.getBytes();
+	//	DatagramPacket packetToDirectory = new DatagramPacket(mensajeB, mensajeB.length, directoryAddress);
 		// TODO: 4.Enviar datagrama y recibir una respuesta (sendAndReceiveDatagrams).
+		byte[] respuesta = this.sendAndReceiveDatagrams(mensajeByte);
 		// TODO: 5.Convertir respuesta recibida en un objeto DirMessage (método
 		// DirMessage.fromString)
+		DirMessage respuestaDirMessage = DirMessage.fromString(respuesta.toString());
 		// TODO: 6.Extraer datos del objeto DirMessage y procesarlos (p.ej., sessionKey)
+		if(respuestaDirMessage.getOperation().equals(DirMessageOps.OPERATION_LOGINOK)) {
+			sessionKey=respuestaDirMessage.getSessionkey();
+			success=true;
+		} else {
+			System.err.println("No se ha podido loguear al usuario");
+		}
 		// TODO: 7.Devolver éxito/fracaso de la operación
-
-
 
 		return success;
 	}
@@ -219,8 +265,6 @@ public class DirectoryConnector {
 		String[] userlist = null;
 		// TODO: Ver TODOs en logIntoDirectory y seguir esquema similar
 
-
-
 		return userlist;
 	}
 
@@ -231,8 +275,6 @@ public class DirectoryConnector {
 	 */
 	public boolean logoutFromDirectory() {
 		// TODO: Ver TODOs en logIntoDirectory y seguir esquema similar
-
-
 
 		return false;
 	}
@@ -248,8 +290,6 @@ public class DirectoryConnector {
 	public boolean registerServerPort(int serverPort) {
 		// TODO: Ver TODOs en logIntoDirectory y seguir esquema similar
 		boolean success = false;
-
-
 
 		return success;
 	}
@@ -267,8 +307,6 @@ public class DirectoryConnector {
 		InetSocketAddress serverAddr = null;
 		// TODO: Ver TODOs en logIntoDirectory y seguir esquema similar
 
-
-
 		return serverAddr;
 	}
 
@@ -284,8 +322,6 @@ public class DirectoryConnector {
 		boolean success = false;
 
 		// TODO: Ver TODOs en logIntoDirectory y seguir esquema similar
-
-
 
 		return success;
 	}
@@ -303,8 +339,6 @@ public class DirectoryConnector {
 		FileInfo[] filelist = null;
 		// TODO: Ver TODOs en logIntoDirectory y seguir esquema similar
 
-
-
 		return filelist;
 	}
 
@@ -321,12 +355,7 @@ public class DirectoryConnector {
 		String[] nicklist = null;
 		// TODO: Ver TODOs en logIntoDirectory y seguir esquema similar
 
-
-
 		return nicklist;
 	}
-
-
-
 
 }

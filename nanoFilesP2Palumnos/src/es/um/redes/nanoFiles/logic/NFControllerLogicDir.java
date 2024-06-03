@@ -61,9 +61,17 @@ public class NFControllerLogicDir {
 		 * "login", informar por pantalla del éxito/fracaso e imprimir la clave de
 		 * sesión asignada por el directorio. Devolver éxito/fracaso de la operación.
 		 */
+		
+		
+		try {
+			directoryConnector = new DirectoryConnector(directoryHostname);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
 		boolean result = false;
 
-
+		result = directoryConnector.logIntoDirectory(nickname);
 
 		return result;
 	}

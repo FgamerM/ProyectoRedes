@@ -31,7 +31,9 @@ public class DirMessage {
 	 * aparecer en los mensajes de este protocolo (formato campo:valor)
 	 */
 
-
+	private static final String FIELDNAME_NICKNAME = "nickname";
+	private static final String FIELDNAME_SESSIONKEY = "sessionkey";
+	private static final String FIELDNAME_USERLIST = "userlist";
 
 	/**
 	 * Tipo del mensaje, de entre los tipos definidos en PeerMessageOps.
@@ -42,16 +44,15 @@ public class DirMessage {
 	 * diferentes mensajes de este protocolo.
 	 */
 	private String nickname;
-
-
+	private int sessionkey=-1;
+	private boolean isServer;
+	private String user;  
+	private String[] userlist;
 
 
 	public DirMessage(String op) {
 		operation = op;
 	}
-
-
-
 
 	/*
 	 * TODO: Crear diferentes constructores adecuados para construir mensajes de
@@ -62,22 +63,45 @@ public class DirMessage {
 		return operation;
 	}
 
+	public int getSessionkey() {
+		return sessionkey;
+	}
+
+	public void setSessionkey(int sessionkey) {
+		this.sessionkey = sessionkey;
+	}
+
+	public boolean isServer() {
+		return isServer;
+	}
+
+	public void setServer(boolean isServer) {
+		this.isServer = isServer;
+	}
+
+	public String getUser() {
+		return user;
+	}
+
+	public void setUser(String user) {
+		this.user = user;
+	}
+
+	public String[] getUserlist() {
+		return userlist;
+	}
+
+	public void setUserlist(String[] userlist) {
+		this.userlist = userlist;
+	}
+
 	public void setNickname(String nick) {
-
-
-
 		nickname = nick;
 	}
 
 	public String getNickname() {
-
-
-
 		return nickname;
 	}
-
-
-
 
 	/**
 	 * Método que convierte un mensaje codificado como una cadena de caracteres, a
@@ -105,6 +129,7 @@ public class DirMessage {
 
 		for (String line : lines) {
 			int idx = line.indexOf(DELIMITER); // Posición del delimitador
+			System.out.println(line);
 			String fieldName = line.substring(0, idx).toLowerCase(); // minúsculas
 			String value = line.substring(idx + 1).trim();
 
@@ -114,9 +139,18 @@ public class DirMessage {
 				m = new DirMessage(value);
 				break;
 			}
-
-
-
+			case FIELDNAME_NICKNAME: {
+				m.setNickname(value);
+				break;
+			}
+			case FIELDNAME_SESSIONKEY: {
+				m.setSessionkey(Integer.parseInt(value));
+				break;
+			}
+			case FIELDNAME_USERLIST: {
+				m.setUserlist(value.split(","));
+				break; 
+			}
 
 			default:
 				System.err.println("PANIC: DirMessage.fromString - message with unknown field name " + fieldName);
@@ -124,10 +158,7 @@ public class DirMessage {
 				System.exit(-1);
 			}
 		}
-
-
-
-
+		
 		return m;
 	}
 
@@ -148,7 +179,44 @@ public class DirMessage {
 		 * del objeto.
 		 */
 
-
+		switch (operation) {
+		case DirMessageOps.OPERATION_LOGIN: {
+			sb.append(FIELDNAME_NICKNAME+DELIMITER+nickname+END_LINE);
+			break;
+		}
+		case DirMessageOps.OPERATION_LOGINOK: {
+			sb.append(FIELDNAME_SESSIONKEY+DELIMITER+sessionkey+END_LINE);
+			break;
+		}
+		case DirMessageOps.OPERATION_INVALID: {
+			System.err.println("Operación inválida");
+		}
+		case DirMessageOps.OPERATION_GETUSERLIST: {
+			sb.append(FIELDNAME_SESSIONKEY+DELIMITER+sessionkey+END_LINE);
+			break;
+		}
+		case DirMessageOps.OPERATION_SENDUSERLIST: {
+			sb.append(FIELDNAME_USERLIST+DELIMITER);
+			for(int i=0; i<userlist.length-1; i++) {
+				sb.append(userlist[i]+",");
+			}
+			sb.append(userlist[userlist.length-1]+END_LINE);
+			break;
+		}
+		case DirMessageOps.OPERATION_LOGOUT: {
+			sb.append(FIELDNAME_SESSIONKEY+DELIMITER+sessionkey+END_LINE);
+			break;
+		}
+		case DirMessageOps.OPERATION_LOGOUTOK: {
+			break;
+		}
+		case DirMessageOps.OPERATION_INVALIDKEY: {
+			break;
+		}
+		case DirMessageOps.OPERATION_INVALIDNICKNAME: {
+			break;
+		}
+		}
 
 		sb.append(END_LINE); // Marcamos el final del mensaje
 		return sb.toString();
