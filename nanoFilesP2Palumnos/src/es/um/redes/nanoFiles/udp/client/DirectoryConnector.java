@@ -266,7 +266,6 @@ public class DirectoryConnector {
 		String[] userlist = null;
 		// TODO: Ver TODOs en logIntoDirectory y seguir esquema similar
 		
-		// TODO: Ver TODOs en logIntoDirectory y seguir esquema similar
 		DirMessage mensaje = new DirMessage(DirMessageOps.OPERATION_GETUSERLIST);
 		mensaje.setSessionkey(this.sessionKey);
 		String strToSend = mensaje.toString();
