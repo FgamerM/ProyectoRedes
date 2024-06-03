@@ -240,7 +240,8 @@ public class DirectoryConnector {
 		byte[] respuesta = this.sendAndReceiveDatagrams(mensajeByte);
 		// TODO: 5.Convertir respuesta recibida en un objeto DirMessage (método
 		// DirMessage.fromString)
-		DirMessage respuestaDirMessage = DirMessage.fromString(respuesta.toString());
+		//DirMessage respuestaDirMessage = DirMessage.fromString(respuesta.toString());
+		DirMessage respuestaDirMessage = DirMessage.fromString(new String(respuesta));
 		// TODO: 6.Extraer datos del objeto DirMessage y procesarlos (p.ej., sessionKey)
 		if(respuestaDirMessage.getOperation().equals(DirMessageOps.OPERATION_LOGINOK)) {
 			sessionKey=respuestaDirMessage.getSessionkey();
