@@ -86,8 +86,12 @@ public class NFControllerLogicDir {
 		 * dar de baja a este usuario. Se debe enviar la clave de sesión para
 		 * identificarse. Devolver éxito/fracaso de la operación.
 		 */
-		boolean result = false;
-
+		if(this.directoryConnector == null) {
+			System.err.println("No registrado");
+		} 
+		
+		boolean result = this.directoryConnector.logoutFromDirectory();
+		
 
 
 		return result;
@@ -103,9 +107,16 @@ public class NFControllerLogicDir {
 		 * e imprimirla por pantalla. Devolver éxito/fracaso de la operación.
 		 */
 		boolean result = false;
-
-
-
+		String [] userlist = this.directoryConnector.getUserList();
+		System.out.println("salida: ");
+		System.out.print("[");
+		for (int i = 0; i < userlist.length; i++) {
+            System.out.print((userlist[i]));
+            if (i < userlist.length - 1) {
+                System.out.print(",");
+            }
+        }
+		System.out.println("]");
 		return result;
 	}
 
