@@ -13,8 +13,11 @@ public class DirMessageOps {
 	public static final String OPERATION_SENDUSERLIST = "senduserlist";
 	public static final String OPERATION_LOGOUT = "logout";
 	public static final String OPERATION_LOGOUTOK = "logoutok";
+	public static final String OPERATION_LOGOUTFAIL = "logoutfail";
 	public static final String OPERATION_INVALIDKEY = "invalidkey";
 	public static final String OPERATION_INVALIDNICKNAME = "invalidnickname";
+	public static final String OPERATION_USERLISTOK = "userlistok";
+	public static final String OPERATION_USERLISTFAIL = "userlistfail";
 
 
 

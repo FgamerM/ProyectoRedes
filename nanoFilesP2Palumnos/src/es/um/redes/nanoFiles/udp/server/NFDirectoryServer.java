@@ -166,31 +166,35 @@ public class NFDirectoryServer {
 						continue;
 					}
 					
-				//	System.out.println("quiero mandarte la respuesta pero el mensaje es "+messageFromClient);
-				//	String[] cadenaDividida = messageFromClient.split("&");
-					String mensajeClienteStr = new String(messageFromClient);
-                    if(mensajeClienteStr.startsWith("login")) {
-                        String nickname = mensajeClienteStr.substring(6);
-                        String strResponse = null;
-                        if(this.nicks.containsKey(nickname)) {
-                            strResponse = "login_failed:-1";
-                        }
-                        else {
-                            int num;
-                            do {
-                                num = random.nextInt(1000);
-                            } while (this.nicks.containsValue(num));
-
-                            this.nicks.put(nickname, num);
-                            strResponse = "loginok&"+num;
-                            System.out.println("Login aceptado");
-                        }
-
-
-                        DatagramPacket packetToSend = new DatagramPacket(strResponse.getBytes(), strResponse.length(), clientAddr);
-                        this.socket.send(packetToSend);
-                        System.out.println();
-                    }
+					
+				//ESTO ES LO DE ANTES DE LOS MENSAJES BUENOS	
+//				//	System.out.println("quiero mandarte la respuesta pero el mensaje es "+messageFromClient);
+//				//	String[] cadenaDividida = messageFromClient.split("&");
+//					
+//					String mensajeClienteStr = new String(messageFromClient);
+//                    if(mensajeClienteStr.startsWith("login")) {
+//                        String nickname = mensajeClienteStr.substring(6);
+//                        String strResponse = null;
+//                        if(this.nicks.containsKey(nickname)) {
+//                            strResponse = "login_failed:-1";
+//                        }
+//                        else {
+//                            int num;
+//                            do {
+//                                num = random.nextInt(1000);
+//                            } while (this.nicks.containsValue(num));
+//
+//                            this.nicks.put(nickname, num);
+//                            strResponse = "loginok&"+num;
+//                            System.out.println("Login aceptado");
+//                        }
+//
+//
+//                        DatagramPacket packetToSend = new DatagramPacket(strResponse.getBytes(), strResponse.length(), clientAddr);
+//                        this.socket.send(packetToSend);
+//                        System.out.println();
+//                    }
+//                    
 
 					/*
 					 * TODO: Construir String a partir de los datos recibidos en el datagrama. A
@@ -198,11 +202,9 @@ public class NFDirectoryServer {
 					 * Después, usar la cadena para construir un objeto DirMessage que contenga en
 					 * sus atributos los valores del mensaje (fromString).
 					 */
+					System.out.println("La cadena recibida es "+messageFromClient);//Supongo que depuración
+					DirMessage mensaje = DirMessage.fromString(messageFromClient);
 					
-			/*		messageFromClient = new String(packetFromClient.getData(), 0 ,dataLength).trim();
-					System.out.println("La cadena recibida es "+messageFromClient);
-					DirMessage mensaje = new DirMessage(messageFromClient);
-				*/	
 					/*
 					 * TODO: Llamar a buildResponseFromRequest para construir, a partir del objeto
 					 * DirMessage con los valores del mensaje de petición recibido, un nuevo objeto
@@ -211,7 +213,7 @@ public class NFDirectoryServer {
 					 * adecuados para los diferentes campos del mensaje (operation, etc.)
 					 */
 					
-				//	DirMessage MessageToSend=this.buildResponseFromRequest(mensaje, clientAddr);
+					DirMessage MessageToSend=this.buildResponseFromRequest(mensaje, clientAddr);
 					
 					/*
 					 * TODO: Convertir en string el objeto DirMessage con el mensaje de respuesta a
@@ -219,7 +221,7 @@ public class NFDirectoryServer {
 					 * finalmente enviarlos en un datagrama
 					 */
 					
-			/*		String MessageToSendString = MessageToSend.toString();
+					String MessageToSendString = MessageToSend.toString();//fino, Aquí peta
 					byte[] MessageToSendBytes=MessageToSendString.getBytes();
 					DatagramPacket packetToServer = new DatagramPacket(MessageToSendBytes, MessageToSendBytes.length, clientAddr);
 					try {
@@ -227,7 +229,7 @@ public class NFDirectoryServer {
 						} catch(IOException e) {
 							e.printStackTrace();
 						}
-					*/	
+						
 				}
 			} else {
 				System.err.println("Directory ignores EMPTY datagram from " + clientAddr);
@@ -253,6 +255,22 @@ public class NFDirectoryServer {
 		switch (operation) {
 		case DirMessageOps.OPERATION_LOGIN: {
 			String username = msg.getNickname();
+			int sessionkey=-1;
+			if(this.nicks.containsKey(username)) {
+				response=new DirMessage(DirMessageOps.OPERATION_INVALIDNICKNAME);
+			}
+			else {
+				do {
+					sessionkey = random.nextInt(10000);
+				}while(this.sessionKeys.containsKey(sessionkey));
+				
+				this.nicks.put(username, sessionkey);
+				this.sessionKeys.put(sessionkey, username);
+				response = new DirMessage(DirMessageOps.OPERATION_LOGINOK);
+				response.setNickname(username);
+				response.setSessionkey(sessionkey);
+			}
+			break;
 
 			/*
 			 * TODO: Comprobamos si tenemos dicho usuario registrado (atributo "nicks"). Si
@@ -273,13 +291,46 @@ public class NFDirectoryServer {
 
 
 
+			
+		}case DirMessageOps.OPERATION_LOGOUT : {
+			int sessionkey = msg.getSessionkey();
+			
+			if(this.sessionKeys.containsKey(sessionkey)) { 
+				response = new DirMessage(DirMessageOps.OPERATION_LOGOUTOK);
+				this.nicks.remove(this.sessionKeys.get(sessionkey));
+				this.sessionKeys.remove(sessionkey);
+				
+			}
+			else {			
+				response = new DirMessage(DirMessageOps.OPERATION_LOGOUTFAIL);
+				System.err.println("Sesion key no asignada: "+sessionkey);
+							 
+			}
 			break;
+			
+		}case DirMessageOps.OPERATION_GETUSERLIST : {
+			
+			if(this.sessionKeys.containsKey(msg.getSessionkey())) {
+				response = new DirMessage(DirMessageOps.OPERATION_USERLISTOK);
+				String[] userList = this.nicks.keySet().toArray(new String[0]);
+				response.setUserlist(userList);
+				
+			}
+			else {
+				response = new DirMessage(DirMessageOps.OPERATION_USERLISTFAIL);
+				
+			}
+			
+			break;
+			
 		}
 
 
 
 		default:
 			System.out.println("Unexpected message operation: \"" + operation + "\"");
+			System.out.println("Answer: ");
+			System.out.println(response);
 		}
 		return response;
 

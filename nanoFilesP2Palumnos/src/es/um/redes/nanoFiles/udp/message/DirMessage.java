@@ -215,6 +215,12 @@ public class DirMessage {
 		}
 		case DirMessageOps.OPERATION_INVALIDNICKNAME: {
 			break;
+		}case DirMessageOps.OPERATION_LOGOUTFAIL :{
+			break;
+		} case DirMessageOps.OPERATION_USERLISTFAIL :{
+			break;
+		} case DirMessageOps.OPERATION_USERLISTOK : {
+			break;
 		}
 		}
 
